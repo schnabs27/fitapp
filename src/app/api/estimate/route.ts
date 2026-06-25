@@ -14,9 +14,10 @@ type EstimateRequest = { description?: string; portion?: number };
 type NutritionEstimate = {
   name: string;
   calories: number;
-  carbs_g: number;
   protein_g: number;
+  fiber_g: number;
   fat_g: number;
+  sugar_g: number;
   confidence: "low" | "medium" | "high";
   notes?: string;
 };
@@ -40,17 +41,22 @@ const NUTRITION_TOOL: Anthropic.Tool = {
         type: "integer",
         description: "Estimated total calories (kcal) for the full portion described.",
       },
-      carbs_g: {
-        type: "number",
-        description: "Estimated total carbohydrates in grams.",
-      },
       protein_g: {
         type: "number",
         description: "Estimated total protein in grams.",
       },
+      fiber_g: {
+        type: "number",
+        description: "Estimated total dietary fiber in grams.",
+      },
       fat_g: {
         type: "number",
         description: "Estimated total fat in grams.",
+      },
+      sugar_g: {
+        type: "number",
+        description:
+          "Estimated total sugar in grams (not total carbohydrates) — includes naturally occurring and added sugars.",
       },
       confidence: {
         type: "string",
@@ -64,7 +70,15 @@ const NUTRITION_TOOL: Anthropic.Tool = {
           "Optional: brief note on assumptions made (e.g. assumed cooking oil, portion size guessed).",
       },
     },
-    required: ["name", "calories", "carbs_g", "protein_g", "fat_g", "confidence"],
+    required: [
+      "name",
+      "calories",
+      "protein_g",
+      "fiber_g",
+      "fat_g",
+      "sugar_g",
+      "confidence",
+    ],
   },
 };
 
@@ -103,7 +117,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "user",
-          content: `Estimate the nutrition for this meal. Portion multiplier: ${portion}x the described amounts.\n\nMeal description: ${description}`,
+          content: `Estimate the nutrition for this meal. Portion multiplier: ${portion}x the described amounts.\n\nImportant: estimate SUGAR content specifically (grams of sugar, not total carbohydrates). This app does not track overall carbs.\n\nMeal description: ${description}`,
         },
       ],
     });
