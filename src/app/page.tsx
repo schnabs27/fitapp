@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -108,12 +109,17 @@ export default function Home() {
         <h1 className="text-lg font-bold">
           Today · {new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}
         </h1>
-        <button
-          onClick={() => supabase.auth.signOut().then(() => router.replace("/login"))}
-          className="text-xs text-neutral-500"
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-3">
+          <Link href="/settings" className="text-xs text-neutral-500" aria-label="Goals">
+            ⚙️ Goals
+          </Link>
+          <button
+            onClick={() => supabase.auth.signOut().then(() => router.replace("/login"))}
+            className="text-xs text-neutral-500"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
 
       <WaterTracker
@@ -138,15 +144,42 @@ export default function Home() {
         <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
           <div>
             <p className="text-neutral-500">🌾 Carbs</p>
-            <p className="font-semibold">{Math.round(totals.carbs_g)} g</p>
+            <p className="font-semibold">
+              {Math.round(totals.carbs_g)}
+              {settings.daily_carbs_goal_g != null && (
+                <span className="font-normal text-neutral-500">
+                  {" "}
+                  / {settings.daily_carbs_goal_g}
+                </span>
+              )}{" "}
+              g
+            </p>
           </div>
           <div>
             <p className="text-neutral-500">🥩 Protein</p>
-            <p className="font-semibold">{Math.round(totals.protein_g)} g</p>
+            <p className="font-semibold">
+              {Math.round(totals.protein_g)}
+              {settings.daily_protein_goal_g != null && (
+                <span className="font-normal text-neutral-500">
+                  {" "}
+                  / {settings.daily_protein_goal_g}
+                </span>
+              )}{" "}
+              g
+            </p>
           </div>
           <div>
             <p className="text-neutral-500">🥑 Fat</p>
-            <p className="font-semibold">{Math.round(totals.fat_g)} g</p>
+            <p className="font-semibold">
+              {Math.round(totals.fat_g)}
+              {settings.daily_fat_goal_g != null && (
+                <span className="font-normal text-neutral-500">
+                  {" "}
+                  / {settings.daily_fat_goal_g}
+                </span>
+              )}{" "}
+              g
+            </p>
           </div>
         </div>
       </div>
