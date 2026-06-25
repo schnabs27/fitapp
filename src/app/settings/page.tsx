@@ -40,6 +40,7 @@ export default function SettingsPage() {
   const router = useRouter();
 
   const [form, setForm] = useState<FormState | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +53,7 @@ export default function SettingsPage() {
         router.replace("/login");
         return;
       }
+      setUserId(userData.user.id);
       const { data } = await supabase
         .from("user_settings")
         .select("*")
@@ -66,7 +68,7 @@ export default function SettingsPage() {
   }
 
   async function handleSave() {
-    if (!form) return;
+    if (!form || !userId) return;
     setSaving(true);
     setError(null);
 
@@ -95,7 +97,8 @@ export default function SettingsPage() {
         daily_protein_goal_g: toNullableNumber(form.daily_protein_goal_g),
         daily_fat_goal_g: toNullableNumber(form.daily_fat_goal_g),
         home_timezone: form.home_timezone,
-      });
+      })
+      .eq("user_id", userId);
 
     setSaving(false);
 
