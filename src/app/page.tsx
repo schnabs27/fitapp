@@ -2,6 +2,8 @@
 // that environment variables are wired up. Gets replaced by the Today
 // dashboard in a later Phase 1 step.
 
+import GoogleSignInButton from "./auth/GoogleSignInButton";
+
 function StatusRow({ label, ok }: { label: string; ok: boolean }) {
   return (
     <li className="flex items-center gap-3 py-1">
@@ -46,6 +48,10 @@ export default function Home() {
           Vercel project settings, then redeploy.
         </p>
       </section>
+
+      <div className="flex justify-center">
+        <GoogleSignInButton />
+      </div>
 
       <p className="text-center text-xs text-neutral-600">
         Next: auth, settings, and meal logging.
