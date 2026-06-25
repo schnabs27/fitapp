@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
+// Model for meal estimation. Haiku is the cheapest/fastest tier and
+// plenty for calorie + macro estimation. If you ever want a second
+// opinion on a tricky meal, swap this for a Sonnet model string —
+// everything else below stays the same.
 const ESTIMATION_MODEL = "claude-haiku-4-5-20251001";
 
-export const runtime = "nodejs";
+export const runtime = "nodejs"; // Anthropic SDK needs the Node runtime, not Edge
 
 type EstimateRequest = { description?: string; portion?: number };
 
-interface NutritionResult {
+type NutritionEstimate = {
   name: string;
   calories: number;
   carbs_g: number;
@@ -15,45 +19,49 @@ interface NutritionResult {
   fat_g: number;
   confidence: "low" | "medium" | "high";
   notes?: string;
-}
+};
 
+// Forcing a tool call (instead of asking Claude to "please return JSON")
+// guarantees a parseable, schema-shaped response every time — no
+// markdown fences or stray prose to strip out.
 const NUTRITION_TOOL: Anthropic.Tool = {
   name: "report_nutrition",
   description:
-    "Report the estimated nutritional content for the described meal or food item.",
+    "Report estimated nutrition facts for a described meal or food item.",
   input_schema: {
     type: "object",
     properties: {
       name: {
         type: "string",
-        description: "Canonical name for the food or meal.",
+        description:
+          "A short, human-readable name for this meal, e.g. 'Toasted Sprouted Grain Bread with Egg and Avocado'.",
       },
       calories: {
-        type: "number",
-        description: "Total calories (kcal).",
+        type: "integer",
+        description: "Estimated total calories (kcal) for the full portion described.",
       },
       carbs_g: {
         type: "number",
-        description: "Total carbohydrates in grams.",
+        description: "Estimated total carbohydrates in grams.",
       },
       protein_g: {
         type: "number",
-        description: "Total protein in grams.",
+        description: "Estimated total protein in grams.",
       },
       fat_g: {
         type: "number",
-        description: "Total fat in grams.",
+        description: "Estimated total fat in grams.",
       },
       confidence: {
         type: "string",
         enum: ["low", "medium", "high"],
         description:
-          "Confidence level in the estimate based on specificity of the description.",
+          "How confident this estimate is, given how specific the description was.",
       },
       notes: {
         type: "string",
         description:
-          "Optional clarifying notes, e.g. assumptions made or wide variance in the estimate.",
+          "Optional: brief note on assumptions made (e.g. assumed cooking oil, portion size guessed).",
       },
     },
     required: ["name", "calories", "carbs_g", "protein_g", "fat_g", "confidence"],
@@ -61,7 +69,14 @@ const NUTRITION_TOOL: Anthropic.Tool = {
 };
 
 export async function POST(request: Request) {
-  const { description, portion = 1 }: EstimateRequest = await request.json();
+  let body: EstimateRequest;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const { description, portion = 1 } = body;
 
   if (!description || !description.trim()) {
     return NextResponse.json(
@@ -77,35 +92,45 @@ export async function POST(request: Request) {
     );
   }
 
-  const client = new Anthropic();
+  const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env automatically
 
-  const message = await client.messages.create({
-    model: ESTIMATION_MODEL,
-    max_tokens: 1024,
-    tools: [NUTRITION_TOOL],
-    tool_choice: { type: "tool", name: "report_nutrition" },
-    messages: [
-      {
-        role: "user",
-        content:
-          `Estimate the nutritional content for ${portion !== 1 ? `${portion} serving(s) of: ` : ""}${description.trim()}`,
-      },
-    ],
-  });
+  try {
+    const message = await client.messages.create({
+      model: ESTIMATION_MODEL,
+      max_tokens: 1024,
+      tools: [NUTRITION_TOOL],
+      tool_choice: { type: "tool", name: "report_nutrition" },
+      messages: [
+        {
+          role: "user",
+          content: `Estimate the nutrition for this meal. Portion multiplier: ${portion}x the described amounts.\n\nMeal description: ${description}`,
+        },
+      ],
+    });
 
-  const toolBlock = message.content.find((b) => b.type === "tool_use");
-  if (!toolBlock || toolBlock.type !== "tool_use") {
+    const toolUseBlock = message.content.find(
+      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use",
+    );
+
+    if (!toolUseBlock) {
+      return NextResponse.json(
+        { error: "Claude did not return a structured estimate. Try again." },
+        { status: 502 },
+      );
+    }
+
+    const estimate = toolUseBlock.input as NutritionEstimate;
+
+    return NextResponse.json({
+      model: ESTIMATION_MODEL,
+      input: { description, portion },
+      estimate,
+    });
+  } catch (err) {
+    console.error("Claude estimation error:", err);
     return NextResponse.json(
-      { error: "Model did not return a tool_use block." },
+      { error: "Failed to get an estimate from Claude. Please try again." },
       { status: 502 },
     );
   }
-
-  const result = toolBlock.input as NutritionResult;
-
-  return NextResponse.json({
-    model: ESTIMATION_MODEL,
-    input: { description, portion },
-    estimate: result,
-  });
 }

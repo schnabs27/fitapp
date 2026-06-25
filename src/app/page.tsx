@@ -1,61 +1,166 @@
-// Temporary status page. Confirms the GitHub → Vercel pipeline works and
-// that environment variables are wired up. Gets replaced by the Today
-// dashboard in a later Phase 1 step.
+"use client";
 
-import GoogleSignInButton from "./auth/GoogleSignInButton";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
+import { getZonedDayBoundsUTC } from "@/lib/timezone";
+import { MEAL_TYPES, type Meal, type UserSettings } from "@/lib/types";
+import { WaterTracker } from "@/components/WaterTracker";
+import { MealTypeSection } from "@/components/MealTypeSection";
+import { MealHistorySearch } from "@/components/MealHistorySearch";
 
-function StatusRow({ label, ok }: { label: string; ok: boolean }) {
-  return (
-    <li className="flex items-center gap-3 py-1">
-      <span
-        className={ok ? "text-teal-400" : "text-neutral-600"}
-        aria-hidden
-      >
-        {ok ? "●" : "○"}
-      </span>
-      <span className={ok ? "text-neutral-100" : "text-neutral-500"}>
-        {label}
-      </span>
-    </li>
-  );
-}
+const DEFAULT_SETTINGS: Omit<UserSettings, "user_id"> = {
+  daily_calorie_goal: 1400,
+  daily_water_goal_oz: 70,
+  daily_carbs_goal_g: null,
+  daily_protein_goal_g: null,
+  daily_fat_goal_g: null,
+  home_timezone: "America/Chicago",
+};
 
 export default function Home() {
-  const hasSupabaseUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const hasSupabaseKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  const hasAnthropicKey = Boolean(process.env.ANTHROPIC_API_KEY);
+  const supabase = createClient();
+  const router = useRouter();
+
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [waterOz, setWaterOz] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const loadEverything = useCallback(async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) {
+      router.replace("/login");
+      return;
+    }
+    setUser(userData.user);
+    setAuthChecked(true);
+
+    // Ensure a settings row exists (first run), otherwise fetch it.
+    let { data: settingsRow } = await supabase
+      .from("user_settings")
+      .select("*")
+      .maybeSingle();
+
+    if (!settingsRow) {
+      const { data: inserted } = await supabase
+        .from("user_settings")
+        .insert(DEFAULT_SETTINGS)
+        .select("*")
+        .single();
+      settingsRow = inserted;
+    }
+    setSettings(settingsRow as UserSettings);
+
+    const timezone = (settingsRow as UserSettings)?.home_timezone ?? "America/Chicago";
+    const { startUTC, endUTC } = getZonedDayBoundsUTC(timezone);
+
+    const [{ data: mealRows }, { data: waterRows }] = await Promise.all([
+      supabase
+        .from("meals")
+        .select("*")
+        .gte("logged_at", startUTC.toISOString())
+        .lt("logged_at", endUTC.toISOString())
+        .order("logged_at", { ascending: true }),
+      supabase
+        .from("water_logs")
+        .select("amount_oz")
+        .gte("logged_at", startUTC.toISOString())
+        .lt("logged_at", endUTC.toISOString()),
+    ]);
+
+    setMeals((mealRows as Meal[]) ?? []);
+    setWaterOz(
+      (waterRows ?? []).reduce((sum, row) => sum + Number(row.amount_oz), 0),
+    );
+    setLoading(false);
+  }, [supabase, router]);
+
+  useEffect(() => {
+    loadEverything();
+  }, [loadEverything]);
+
+  if (!authChecked || loading || !settings) {
+    return (
+      <main className="flex min-h-screen items-center justify-center text-sm text-neutral-500">
+        Loading…
+      </main>
+    );
+  }
+
+  const totals = meals.reduce(
+    (acc, m) => ({
+      calories: acc.calories + m.calories,
+      carbs_g: acc.carbs_g + Number(m.carbs_g),
+      protein_g: acc.protein_g + Number(m.protein_g),
+      fat_g: acc.fat_g + Number(m.fat_g),
+    }),
+    { calories: 0, carbs_g: 0, protein_g: 0, fat_g: 0 },
+  );
+  const caloriesLeft = settings.daily_calorie_goal - totals.calories;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-8 px-6 py-12">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Nutrition Tracker</h1>
-        <p className="mt-1 text-sm text-neutral-400">
-          Phase 1 scaffold — deployment is live.
-        </p>
+    <main className="mx-auto flex max-w-md flex-col gap-4 px-4 py-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-bold">
+          Today · {new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+        </h1>
+        <button
+          onClick={() => supabase.auth.signOut().then(() => router.replace("/login"))}
+          className="text-xs text-neutral-500"
+        >
+          Sign out
+        </button>
       </div>
 
-      <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-          Environment
-        </h2>
-        <ul className="text-sm">
-          <StatusRow label="NEXT_PUBLIC_SUPABASE_URL" ok={hasSupabaseUrl} />
-          <StatusRow label="NEXT_PUBLIC_SUPABASE_ANON_KEY" ok={hasSupabaseKey} />
-          <StatusRow label="ANTHROPIC_API_KEY (server)" ok={hasAnthropicKey} />
-        </ul>
-        <p className="mt-3 text-xs text-neutral-500">
-          Filled circles mean the variable is set. Add any missing ones in your
-          Vercel project settings, then redeploy.
-        </p>
-      </section>
+      <WaterTracker
+        totalOz={waterOz}
+        goalOz={settings.daily_water_goal_oz}
+        onLogged={loadEverything}
+      />
 
-      <div className="flex justify-center">
-        <GoogleSignInButton />
+      <div className="rounded-2xl bg-neutral-900 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-neutral-500">Calories Left</p>
+            <p className="text-2xl font-bold">
+              {caloriesLeft} <span className="text-sm font-normal text-neutral-500">kcal</span>
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-neutral-500">Total Calories</p>
+            <p className="text-2xl font-bold">{totals.calories}</p>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+          <div>
+            <p className="text-neutral-500">🌾 Carbs</p>
+            <p className="font-semibold">{Math.round(totals.carbs_g)} g</p>
+          </div>
+          <div>
+            <p className="text-neutral-500">🥩 Protein</p>
+            <p className="font-semibold">{Math.round(totals.protein_g)} g</p>
+          </div>
+          <div>
+            <p className="text-neutral-500">🥑 Fat</p>
+            <p className="font-semibold">{Math.round(totals.fat_g)} g</p>
+          </div>
+        </div>
       </div>
 
-      <p className="text-center text-xs text-neutral-600">
-        Next: auth, settings, and meal logging.
-      </p>
+      <MealHistorySearch onReused={loadEverything} />
+
+      {MEAL_TYPES.map((mealType) => (
+        <MealTypeSection
+          key={mealType}
+          mealType={mealType}
+          meals={meals.filter((m) => m.meal_type === mealType)}
+          onChanged={loadEverything}
+        />
+      ))}
     </main>
   );
 }
