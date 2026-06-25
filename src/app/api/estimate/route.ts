@@ -1,14 +1,64 @@
 import { NextResponse } from "next/server";
-// import Anthropic from "@anthropic-ai/sdk"; // ← uncomment in the next build step
+import Anthropic from "@anthropic-ai/sdk";
 
-// Model for meal estimation. Haiku is the cheapest/fastest tier and
-// plenty for calorie + macro estimation. Verify the current string and
-// pricing before going live: https://docs.claude.com/en/about-claude/models/overview
 const ESTIMATION_MODEL = "claude-haiku-4-5-20251001";
 
-export const runtime = "nodejs"; // Anthropic SDK needs the Node runtime, not Edge
+export const runtime = "nodejs";
 
 type EstimateRequest = { description?: string; portion?: number };
+
+interface NutritionResult {
+  name: string;
+  calories: number;
+  carbs_g: number;
+  protein_g: number;
+  fat_g: number;
+  confidence: "low" | "medium" | "high";
+  notes?: string;
+}
+
+const NUTRITION_TOOL: Anthropic.Tool = {
+  name: "report_nutrition",
+  description:
+    "Report the estimated nutritional content for the described meal or food item.",
+  input_schema: {
+    type: "object",
+    properties: {
+      name: {
+        type: "string",
+        description: "Canonical name for the food or meal.",
+      },
+      calories: {
+        type: "number",
+        description: "Total calories (kcal).",
+      },
+      carbs_g: {
+        type: "number",
+        description: "Total carbohydrates in grams.",
+      },
+      protein_g: {
+        type: "number",
+        description: "Total protein in grams.",
+      },
+      fat_g: {
+        type: "number",
+        description: "Total fat in grams.",
+      },
+      confidence: {
+        type: "string",
+        enum: ["low", "medium", "high"],
+        description:
+          "Confidence level in the estimate based on specificity of the description.",
+      },
+      notes: {
+        type: "string",
+        description:
+          "Optional clarifying notes, e.g. assumptions made or wide variance in the estimate.",
+      },
+    },
+    required: ["name", "calories", "carbs_g", "protein_g", "fat_g", "confidence"],
+  },
+};
 
 export async function POST(request: Request) {
   const { description, portion = 1 }: EstimateRequest = await request.json();
@@ -27,33 +77,35 @@ export async function POST(request: Request) {
     );
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // SCAFFOLD STUB — returns placeholder macros so the UI has a stable
-  // shape to build against. The next build step replaces this block
-  // with a real Claude call using tool use / structured outputs:
-  //
-  //   const client = new Anthropic();
-  //   const message = await client.messages.create({
-  //     model: ESTIMATION_MODEL,
-  //     max_tokens: 1024,
-  //     tools: [ /* nutrition schema */ ],
-  //     tool_choice: { type: "tool", name: "report_nutrition" },
-  //     messages: [{ role: "user", content: description }],
-  //   });
-  //   ...parse the tool_use block into the object below...
-  // ────────────────────────────────────────────────────────────────
-  void ESTIMATION_MODEL; // referenced so the constant isn't flagged unused
+  const client = new Anthropic();
+
+  const message = await client.messages.create({
+    model: ESTIMATION_MODEL,
+    max_tokens: 1024,
+    tools: [NUTRITION_TOOL],
+    tool_choice: { type: "tool", name: "report_nutrition" },
+    messages: [
+      {
+        role: "user",
+        content:
+          `Estimate the nutritional content for ${portion !== 1 ? `${portion} serving(s) of: ` : ""}${description.trim()}`,
+      },
+    ],
+  });
+
+  const toolBlock = message.content.find((b) => b.type === "tool_use");
+  if (!toolBlock || toolBlock.type !== "tool_use") {
+    return NextResponse.json(
+      { error: "Model did not return a tool_use block." },
+      { status: 502 },
+    );
+  }
+
+  const result = toolBlock.input as NutritionResult;
 
   return NextResponse.json({
-    stub: true,
     model: ESTIMATION_MODEL,
     input: { description, portion },
-    estimate: {
-      name: description.slice(0, 60),
-      calories: 0,
-      carbs_g: 0,
-      protein_g: 0,
-      fat_g: 0,
-    },
+    estimate: result,
   });
 }
