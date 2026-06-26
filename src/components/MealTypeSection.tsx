@@ -65,8 +65,8 @@ export function MealTypeSection({ mealType, meals, onChanged }: Props) {
                 <div>
                   <p className="text-sm font-medium">{meal.name}</p>
                   <p className="text-xs text-neutral-500">
-                    🔥 {meal.calories} kcal · 🌾 {meal.carbs_g}g · 🥩{" "}
-                    {meal.protein_g}g · 🥑 {meal.fat_g}g
+                    🔥 {meal.calories} kcal · 🥩 {meal.protein_g}g · 🌿{" "}
+                    {meal.fiber_g}g · 🥑 {meal.fat_g}g · 🍬 {meal.sugar_g}g
                   </p>
                   {meal.description && (
                     <p className="mt-1 text-xs text-neutral-600">

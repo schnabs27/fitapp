@@ -8,9 +8,10 @@ type Prefill = {
   name: string;
   description: string | null;
   calories: number;
-  carbs_g: number;
   protein_g: number;
+  fiber_g: number;
   fat_g: number;
+  sugar_g: number;
   portion: number;
 };
 
@@ -24,9 +25,10 @@ type Props = {
 const emptyFields = {
   name: "",
   calories: 0,
-  carbs_g: 0,
   protein_g: 0,
+  fiber_g: 0,
   fat_g: 0,
+  sugar_g: 0,
 };
 
 export function MealForm({ mealType, prefill, onSaved, onCancel }: Props) {
@@ -39,9 +41,10 @@ export function MealForm({ mealType, prefill, onSaved, onCancel }: Props) {
       ? {
           name: prefill.name,
           calories: prefill.calories,
-          carbs_g: prefill.carbs_g,
           protein_g: prefill.protein_g,
+          fiber_g: prefill.fiber_g,
           fat_g: prefill.fat_g,
+          sugar_g: prefill.sugar_g,
         }
       : emptyFields,
   );
@@ -70,9 +73,10 @@ export function MealForm({ mealType, prefill, onSaved, onCancel }: Props) {
       setFields({
         name: estimate.name,
         calories: estimate.calories,
-        carbs_g: estimate.carbs_g,
         protein_g: estimate.protein_g,
+        fiber_g: estimate.fiber_g,
         fat_g: estimate.fat_g,
+        sugar_g: estimate.sugar_g,
       });
       setConfidence(estimate.confidence);
       setNotes(estimate.notes ?? null);
@@ -96,9 +100,10 @@ export function MealForm({ mealType, prefill, onSaved, onCancel }: Props) {
         name: fields.name,
         description: description || null,
         calories: Math.round(fields.calories),
-        carbs_g: fields.carbs_g,
         protein_g: fields.protein_g,
+        fiber_g: fields.fiber_g,
         fat_g: fields.fat_g,
+        sugar_g: fields.sugar_g,
         portion,
       });
       if (insertError) throw insertError;
@@ -175,19 +180,24 @@ export function MealForm({ mealType, prefill, onSaved, onCancel }: Props) {
           onChange={(v) => updateField("calories", v)}
         />
         <NumberField
-          label="Carbs (g)"
-          value={fields.carbs_g}
-          onChange={(v) => updateField("carbs_g", v)}
-        />
-        <NumberField
           label="Protein (g)"
           value={fields.protein_g}
           onChange={(v) => updateField("protein_g", v)}
         />
         <NumberField
+          label="Fiber (g)"
+          value={fields.fiber_g}
+          onChange={(v) => updateField("fiber_g", v)}
+        />
+        <NumberField
           label="Fat (g)"
           value={fields.fat_g}
           onChange={(v) => updateField("fat_g", v)}
+        />
+        <NumberField
+          label="Sugar (g)"
+          value={fields.sugar_g}
+          onChange={(v) => updateField("sugar_g", v)}
         />
       </div>
 

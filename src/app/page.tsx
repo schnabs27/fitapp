@@ -14,9 +14,10 @@ import { MealHistorySearch } from "@/components/MealHistorySearch";
 const DEFAULT_SETTINGS: Omit<UserSettings, "user_id"> = {
   daily_calorie_goal: 1400,
   daily_water_goal_oz: 70,
-  daily_carbs_goal_g: null,
   daily_protein_goal_g: null,
+  daily_fiber_goal_g: null,
   daily_fat_goal_g: null,
+  daily_sugar_goal_g: null,
   home_timezone: "America/Chicago",
 };
 
@@ -95,11 +96,12 @@ export default function Home() {
   const totals = meals.reduce(
     (acc, m) => ({
       calories: acc.calories + m.calories,
-      carbs_g: acc.carbs_g + Number(m.carbs_g),
       protein_g: acc.protein_g + Number(m.protein_g),
+      fiber_g: acc.fiber_g + Number(m.fiber_g),
       fat_g: acc.fat_g + Number(m.fat_g),
+      sugar_g: acc.sugar_g + Number(m.sugar_g),
     }),
-    { calories: 0, carbs_g: 0, protein_g: 0, fat_g: 0 },
+    { calories: 0, protein_g: 0, fiber_g: 0, fat_g: 0, sugar_g: 0 },
   );
   const caloriesLeft = settings.daily_calorie_goal - totals.calories;
 
@@ -141,20 +143,7 @@ export default function Home() {
             <p className="text-2xl font-bold">{totals.calories}</p>
           </div>
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-          <div>
-            <p className="text-neutral-500">🌾 Carbs</p>
-            <p className="font-semibold">
-              {Math.round(totals.carbs_g)}
-              {settings.daily_carbs_goal_g != null && (
-                <span className="font-normal text-neutral-500">
-                  {" "}
-                  / {settings.daily_carbs_goal_g}
-                </span>
-              )}{" "}
-              g
-            </p>
-          </div>
+        <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs">
           <div>
             <p className="text-neutral-500">🥩 Protein</p>
             <p className="font-semibold">
@@ -169,6 +158,19 @@ export default function Home() {
             </p>
           </div>
           <div>
+            <p className="text-neutral-500">🌿 Fiber</p>
+            <p className="font-semibold">
+              {Math.round(totals.fiber_g)}
+              {settings.daily_fiber_goal_g != null && (
+                <span className="font-normal text-neutral-500">
+                  {" "}
+                  / {settings.daily_fiber_goal_g}
+                </span>
+              )}{" "}
+              g
+            </p>
+          </div>
+          <div>
             <p className="text-neutral-500">🥑 Fat</p>
             <p className="font-semibold">
               {Math.round(totals.fat_g)}
@@ -176,6 +178,19 @@ export default function Home() {
                 <span className="font-normal text-neutral-500">
                   {" "}
                   / {settings.daily_fat_goal_g}
+                </span>
+              )}{" "}
+              g
+            </p>
+          </div>
+          <div>
+            <p className="text-neutral-500">🍬 Sugar</p>
+            <p className="font-semibold">
+              {Math.round(totals.sugar_g)}
+              {settings.daily_sugar_goal_g != null && (
+                <span className="font-normal text-neutral-500">
+                  {" "}
+                  / {settings.daily_sugar_goal_g}
                 </span>
               )}{" "}
               g

@@ -46,9 +46,10 @@ export function MealHistorySearch({ onReused }: Props) {
       name: meal.name,
       description: meal.description,
       calories: meal.calories,
-      carbs_g: meal.carbs_g,
       protein_g: meal.protein_g,
+      fiber_g: meal.fiber_g,
       fat_g: meal.fat_g,
+      sugar_g: meal.sugar_g,
       portion: meal.portion,
     });
     setAddingId(null);
@@ -81,8 +82,8 @@ export function MealHistorySearch({ onReused }: Props) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm">{meal.name}</p>
                 <p className="text-xs text-neutral-500">
-                  {meal.calories} kcal · {meal.carbs_g}g C · {meal.protein_g}g P ·{" "}
-                  {meal.fat_g}g F
+                  {meal.calories} kcal · {meal.protein_g}g P · {meal.fiber_g}g Fb ·{" "}
+                  {meal.fat_g}g F · {meal.sugar_g}g Sg
                 </p>
               </div>
               <div className="flex gap-1">

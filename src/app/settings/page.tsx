@@ -8,9 +8,10 @@ import type { UserSettings } from "@/lib/types";
 type FormState = {
   daily_calorie_goal: string;
   daily_water_goal_oz: string;
-  daily_carbs_goal_g: string;
   daily_protein_goal_g: string;
+  daily_fiber_goal_g: string;
   daily_fat_goal_g: string;
+  daily_sugar_goal_g: string;
   home_timezone: string;
 };
 
@@ -27,10 +28,13 @@ function toFormState(s: UserSettings): FormState {
   return {
     daily_calorie_goal: String(s.daily_calorie_goal),
     daily_water_goal_oz: String(s.daily_water_goal_oz),
-    daily_carbs_goal_g: s.daily_carbs_goal_g != null ? String(s.daily_carbs_goal_g) : "",
     daily_protein_goal_g:
       s.daily_protein_goal_g != null ? String(s.daily_protein_goal_g) : "",
+    daily_fiber_goal_g:
+      s.daily_fiber_goal_g != null ? String(s.daily_fiber_goal_g) : "",
     daily_fat_goal_g: s.daily_fat_goal_g != null ? String(s.daily_fat_goal_g) : "",
+    daily_sugar_goal_g:
+      s.daily_sugar_goal_g != null ? String(s.daily_sugar_goal_g) : "",
     home_timezone: s.home_timezone,
   };
 }
@@ -93,9 +97,10 @@ export default function SettingsPage() {
       .update({
         daily_calorie_goal: Math.round(calorieGoal),
         daily_water_goal_oz: waterGoal,
-        daily_carbs_goal_g: toNullableNumber(form.daily_carbs_goal_g),
         daily_protein_goal_g: toNullableNumber(form.daily_protein_goal_g),
+        daily_fiber_goal_g: toNullableNumber(form.daily_fiber_goal_g),
         daily_fat_goal_g: toNullableNumber(form.daily_fat_goal_g),
+        daily_sugar_goal_g: toNullableNumber(form.daily_sugar_goal_g),
         home_timezone: form.home_timezone,
       })
       .eq("user_id", userId);
@@ -156,21 +161,27 @@ export default function SettingsPage() {
         </p>
 
         <Field
-          label="Carbs goal (g/day)"
-          value={form.daily_carbs_goal_g}
-          onChange={(v) => update("daily_carbs_goal_g", v)}
-          placeholder="—"
-        />
-        <Field
           label="Protein goal (g/day)"
           value={form.daily_protein_goal_g}
           onChange={(v) => update("daily_protein_goal_g", v)}
           placeholder="—"
         />
         <Field
+          label="Fiber goal (g/day)"
+          value={form.daily_fiber_goal_g}
+          onChange={(v) => update("daily_fiber_goal_g", v)}
+          placeholder="—"
+        />
+        <Field
           label="Fat goal (g/day)"
           value={form.daily_fat_goal_g}
           onChange={(v) => update("daily_fat_goal_g", v)}
+          placeholder="—"
+        />
+        <Field
+          label="Sugar goal (g/day)"
+          value={form.daily_sugar_goal_g}
+          onChange={(v) => update("daily_sugar_goal_g", v)}
           placeholder="—"
         />
       </section>
