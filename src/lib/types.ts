@@ -36,6 +36,11 @@ export type UserSettings = {
   daily_fat_goal_g: number | null;
   daily_sugar_goal_g: number | null;
   home_timezone: string;
+  birth_year: number | null;
+  height_in: number | null;
+  weight_lbs: number | null;
+  biological_sex: string | null;
+  activity_level: string | null;
 };
 
 export type NutritionEstimate = {
@@ -45,6 +50,26 @@ export type NutritionEstimate = {
   fiber_g: number;
   fat_g: number;
   sugar_g: number;
+  confidence: "low" | "medium" | "high";
+  notes?: string;
+};
+
+export type Exercise = {
+  id: string;
+  user_id: string;
+  logged_at: string;
+  name: string;
+  description: string | null;
+  duration_minutes: number;
+  calories_burned: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ExerciseEstimate = {
+  name: string;
+  duration_minutes: number;
+  calories_burned: number;
   confidence: "low" | "medium" | "high";
   notes?: string;
 };

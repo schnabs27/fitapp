@@ -13,6 +13,11 @@ type FormState = {
   daily_fat_goal_g: string;
   daily_sugar_goal_g: string;
   home_timezone: string;
+  birth_year: string;
+  height_in: string;
+  weight_lbs: string;
+  biological_sex: string;
+  activity_level: string;
 };
 
 const COMMON_TIMEZONES = [
@@ -36,6 +41,11 @@ function toFormState(s: UserSettings): FormState {
     daily_sugar_goal_g:
       s.daily_sugar_goal_g != null ? String(s.daily_sugar_goal_g) : "",
     home_timezone: s.home_timezone,
+    birth_year: s.birth_year != null ? String(s.birth_year) : "",
+    height_in: s.height_in != null ? String(s.height_in) : "",
+    weight_lbs: s.weight_lbs != null ? String(s.weight_lbs) : "",
+    biological_sex: s.biological_sex ?? "",
+    activity_level: s.activity_level ?? "",
   };
 }
 
@@ -102,6 +112,11 @@ export default function SettingsPage() {
         daily_fat_goal_g: toNullableNumber(form.daily_fat_goal_g),
         daily_sugar_goal_g: toNullableNumber(form.daily_sugar_goal_g),
         home_timezone: form.home_timezone,
+        birth_year: toNullableNumber(form.birth_year),
+        height_in: toNullableNumber(form.height_in),
+        weight_lbs: toNullableNumber(form.weight_lbs),
+        biological_sex: form.biological_sex.trim() === "" ? null : form.biological_sex,
+        activity_level: form.activity_level.trim() === "" ? null : form.activity_level,
       })
       .eq("user_id", userId);
 
@@ -207,6 +222,67 @@ export default function SettingsPage() {
             </option>
           ))}
         </select>
+      </section>
+
+      <section className="rounded-2xl bg-neutral-900 p-4">
+        <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-neutral-500">
+          Profile
+        </h2>
+        <p className="mb-3 text-xs text-neutral-600">
+          Used to personalize exercise calorie-burn estimates. Optional, but
+          more accurate with it filled in.
+        </p>
+
+        <Field
+          label="Birth year"
+          value={form.birth_year}
+          onChange={(v) => update("birth_year", v)}
+          placeholder="e.g. 1976"
+        />
+        <Field
+          label="Height (inches)"
+          value={form.height_in}
+          onChange={(v) => update("height_in", v)}
+          placeholder="e.g. 62"
+        />
+        <Field
+          label="Weight (lbs)"
+          value={form.weight_lbs}
+          onChange={(v) => update("weight_lbs", v)}
+          placeholder="e.g. 129"
+        />
+
+        <div className="mb-3">
+          <label className="mb-1 block text-xs font-medium text-neutral-400">
+            Biological sex
+          </label>
+          <select
+            value={form.biological_sex}
+            onChange={(e) => update("biological_sex", e.target.value)}
+            className="w-full rounded-lg border border-neutral-700 bg-neutral-950 p-2 text-sm focus:border-teal-500 focus:outline-none"
+          >
+            <option value="">—</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-neutral-400">
+            Activity level
+          </label>
+          <select
+            value={form.activity_level}
+            onChange={(e) => update("activity_level", e.target.value)}
+            className="w-full rounded-lg border border-neutral-700 bg-neutral-950 p-2 text-sm focus:border-teal-500 focus:outline-none"
+          >
+            <option value="">—</option>
+            <option value="sedentary">Sedentary</option>
+            <option value="lightly active">Lightly active</option>
+            <option value="moderately active">Moderately active</option>
+            <option value="very active">Very active</option>
+          </select>
+        </div>
       </section>
 
       {error && <p className="text-sm text-red-400">{error}</p>}

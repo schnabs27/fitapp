@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { getZonedDayBoundsUTC } from "@/lib/timezone";
-import { MEAL_TYPES, type Meal, type UserSettings } from "@/lib/types";
+import { MEAL_TYPES, type Exercise, type Meal, type UserSettings } from "@/lib/types";
 import { WaterTracker } from "@/components/WaterTracker";
 import { MealTypeSection } from "@/components/MealTypeSection";
 import { MealHistorySearch } from "@/components/MealHistorySearch";
+import { ExerciseSection } from "@/components/ExerciseSection";
+import { ExerciseHistorySearch } from "@/components/ExerciseHistorySearch";
 
 const DEFAULT_SETTINGS: Omit<UserSettings, "user_id"> = {
   daily_calorie_goal: 1400,
@@ -19,6 +21,11 @@ const DEFAULT_SETTINGS: Omit<UserSettings, "user_id"> = {
   daily_fat_goal_g: null,
   daily_sugar_goal_g: null,
   home_timezone: "America/Chicago",
+  birth_year: null,
+  height_in: null,
+  weight_lbs: null,
+  biological_sex: null,
+  activity_level: null,
 };
 
 export default function Home() {
@@ -29,6 +36,7 @@ export default function Home() {
   const [authChecked, setAuthChecked] = useState(false);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [meals, setMeals] = useState<Meal[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
   const [waterOz, setWaterOz] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -66,21 +74,29 @@ export default function Home() {
     const timezone = (settingsRow as UserSettings)?.home_timezone ?? "America/Chicago";
     const { startUTC, endUTC } = getZonedDayBoundsUTC(timezone, new Date(), dayOffset);
 
-    const [{ data: mealRows }, { data: waterRows }] = await Promise.all([
-      supabase
-        .from("meals")
-        .select("*")
-        .gte("logged_at", startUTC.toISOString())
-        .lt("logged_at", endUTC.toISOString())
-        .order("logged_at", { ascending: true }),
-      supabase
-        .from("water_logs")
-        .select("amount_oz")
-        .gte("logged_at", startUTC.toISOString())
-        .lt("logged_at", endUTC.toISOString()),
-    ]);
+    const [{ data: mealRows }, { data: waterRows }, { data: exerciseRows }] =
+      await Promise.all([
+        supabase
+          .from("meals")
+          .select("*")
+          .gte("logged_at", startUTC.toISOString())
+          .lt("logged_at", endUTC.toISOString())
+          .order("logged_at", { ascending: true }),
+        supabase
+          .from("water_logs")
+          .select("amount_oz")
+          .gte("logged_at", startUTC.toISOString())
+          .lt("logged_at", endUTC.toISOString()),
+        supabase
+          .from("exercises")
+          .select("*")
+          .gte("logged_at", startUTC.toISOString())
+          .lt("logged_at", endUTC.toISOString())
+          .order("logged_at", { ascending: true }),
+      ]);
 
     setMeals((mealRows as Meal[]) ?? []);
+    setExercises((exerciseRows as Exercise[]) ?? []);
     setWaterOz(
       (waterRows ?? []).reduce((sum, row) => sum + Number(row.amount_oz), 0),
     );
@@ -139,6 +155,7 @@ export default function Home() {
     { calories: 0, protein_g: 0, fiber_g: 0, fat_g: 0, sugar_g: 0 },
   );
   const caloriesLeft = settings.daily_calorie_goal - totals.calories;
+  const caloriesBurned = exercises.reduce((sum, e) => sum + e.calories_burned, 0);
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 px-4 py-6">
@@ -210,6 +227,9 @@ export default function Home() {
           <div className="text-right">
             <p className="text-xs text-neutral-500">Total Calories</p>
             <p className="text-2xl font-bold">{totals.calories}</p>
+            {caloriesBurned > 0 && (
+              <p className="text-xs text-amber-400">🔥 {caloriesBurned} burned</p>
+            )}
           </div>
         </div>
         <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs">
@@ -280,6 +300,15 @@ export default function Home() {
           timezone={timezone}
         />
       ))}
+
+      <ExerciseHistorySearch onReused={loadEverything} loggedAt={loggedAtForDay} />
+
+      <ExerciseSection
+        exercises={exercises}
+        onChanged={loadEverything}
+        loggedAt={loggedAtForDay}
+        timezone={timezone}
+      />
     </main>
   );
 }
