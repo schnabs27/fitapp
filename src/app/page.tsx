@@ -32,6 +32,12 @@ export default function Home() {
   const [waterOz, setWaterOz] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // 0 = today, +1 = tomorrow, -1 = yesterday, etc. This is the entire
+  // mechanism behind the meal planner: viewing/logging a future day
+  // uses the exact same dashboard and meal form as today. A meal dated
+  // in the future IS your plan for that day — no separate table needed.
+  const [dayOffset, setDayOffset] = useState(0);
+
   const loadEverything = useCallback(async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) {
@@ -58,7 +64,7 @@ export default function Home() {
     setSettings(settingsRow as UserSettings);
 
     const timezone = (settingsRow as UserSettings)?.home_timezone ?? "America/Chicago";
-    const { startUTC, endUTC } = getZonedDayBoundsUTC(timezone);
+    const { startUTC, endUTC } = getZonedDayBoundsUTC(timezone, new Date(), dayOffset);
 
     const [{ data: mealRows }, { data: waterRows }] = await Promise.all([
       supabase
@@ -79,9 +85,10 @@ export default function Home() {
       (waterRows ?? []).reduce((sum, row) => sum + Number(row.amount_oz), 0),
     );
     setLoading(false);
-  }, [supabase, router]);
+  }, [supabase, router, dayOffset]);
 
   useEffect(() => {
+    setLoading(true);
     loadEverything();
   }, [loadEverything]);
 
@@ -92,6 +99,34 @@ export default function Home() {
       </main>
     );
   }
+
+  const timezone = settings.home_timezone;
+  const { startUTC: dayStartUTC } = getZonedDayBoundsUTC(timezone, new Date(), dayOffset);
+  // Meals/water logged for this viewed day get stamped at local noon —
+  // keeps them safely inside the day's bounds regardless of exact entry
+  // time, and avoids any midnight edge cases.
+  const loggedAtForDay = new Date(dayStartUTC.getTime() + 12 * 60 * 60 * 1000).toISOString();
+
+  const isToday = dayOffset === 0;
+  const isFutureDay = dayOffset > 0;
+  const dayLabel =
+    dayOffset === 0
+      ? "Today"
+      : dayOffset === 1
+        ? "Tomorrow"
+        : dayOffset === -1
+          ? "Yesterday"
+          : dayStartUTC.toLocaleDateString(undefined, {
+              timeZone: timezone,
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            });
+  const dateSubLabel = dayStartUTC.toLocaleDateString(undefined, {
+    timeZone: timezone,
+    month: "short",
+    day: "numeric",
+  });
 
   const totals = meals.reduce(
     (acc, m) => ({
@@ -108,9 +143,36 @@ export default function Home() {
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 px-4 py-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">
-          Today · {new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-        </h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setDayOffset((d) => d - 1)}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-800 text-neutral-300"
+            aria-label="Previous day"
+          >
+            ←
+          </button>
+          <div>
+            <h1 className="text-lg font-bold leading-tight">{dayLabel}</h1>
+            {dayOffset !== 0 && (
+              <p className="text-xs leading-tight text-neutral-500">{dateSubLabel}</p>
+            )}
+          </div>
+          <button
+            onClick={() => setDayOffset((d) => d + 1)}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-800 text-neutral-300"
+            aria-label="Next day"
+          >
+            →
+          </button>
+          {!isToday && (
+            <button
+              onClick={() => setDayOffset(0)}
+              className="ml-1 rounded-full bg-teal-500/10 px-2 py-1 text-xs font-medium text-teal-400"
+            >
+              Today
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <Link href="/settings" className="text-xs text-neutral-500" aria-label="Goals">
             ⚙️ Goals
@@ -124,10 +186,17 @@ export default function Home() {
         </div>
       </div>
 
+      {isFutureDay && (
+        <div className="rounded-xl bg-amber-400/10 px-3 py-2 text-center text-xs text-amber-300">
+          📅 Planning ahead — meals logged here are your plan for this day.
+        </div>
+      )}
+
       <WaterTracker
         totalOz={waterOz}
         goalOz={settings.daily_water_goal_oz}
         onLogged={loadEverything}
+        readOnly={!isToday}
       />
 
       <div className="rounded-2xl bg-neutral-900 p-4">
@@ -199,7 +268,7 @@ export default function Home() {
         </div>
       </div>
 
-      <MealHistorySearch onReused={loadEverything} />
+      <MealHistorySearch onReused={loadEverything} loggedAt={loggedAtForDay} />
 
       {MEAL_TYPES.map((mealType) => (
         <MealTypeSection
@@ -207,6 +276,8 @@ export default function Home() {
           mealType={mealType}
           meals={meals.filter((m) => m.meal_type === mealType)}
           onChanged={loadEverything}
+          loggedAt={loggedAtForDay}
+          timezone={timezone}
         />
       ))}
     </main>

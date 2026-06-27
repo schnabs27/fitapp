@@ -18,6 +18,9 @@ type Prefill = {
 type Props = {
   mealType: MealType;
   prefill?: Prefill;
+  // ISO timestamp this entry should be saved under — lets the same form
+  // log today, backfill a past day, or plan a future day.
+  loggedAt: string;
   onSaved: () => void;
   onCancel: () => void;
 };
@@ -31,7 +34,7 @@ const emptyFields = {
   sugar_g: 0,
 };
 
-export function MealForm({ mealType, prefill, onSaved, onCancel }: Props) {
+export function MealForm({ mealType, prefill, loggedAt, onSaved, onCancel }: Props) {
   const supabase = createClient();
 
   const [description, setDescription] = useState(prefill?.description ?? "");
@@ -105,6 +108,7 @@ export function MealForm({ mealType, prefill, onSaved, onCancel }: Props) {
         fat_g: fields.fat_g,
         sugar_g: fields.sugar_g,
         portion,
+        logged_at: loggedAt,
       });
       if (insertError) throw insertError;
       onSaved();

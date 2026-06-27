@@ -27,6 +27,20 @@ export function getZonedDayBoundsUTC(
   return { startUTC, endUTC };
 }
 
+/**
+ * Returns a comparable "YYYY-MM-DD" key for a date as seen in a given
+ * timezone. Used to compare calendar days (e.g. "is this meal in the
+ * future relative to today?") without caring about exact instants.
+ */
+export function getZonedDateKey(timeZone: string, date: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 function getZonedYMD(timeZone: string, date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,

@@ -7,9 +7,10 @@ type Props = {
   totalOz: number;
   goalOz: number;
   onLogged: () => void;
+  readOnly?: boolean;
 };
 
-export function WaterTracker({ totalOz, goalOz, onLogged }: Props) {
+export function WaterTracker({ totalOz, goalOz, onLogged, readOnly = false }: Props) {
   const supabase = createClient();
   const [custom, setCustom] = useState("");
   const [logging, setLogging] = useState(false);
@@ -42,36 +43,42 @@ export function WaterTracker({ totalOz, goalOz, onLogged }: Props) {
       </div>
       <p className="mt-1 text-right text-xs text-white/80">{goalOz} oz goal</p>
 
-      <div className="mt-3 flex items-center gap-2">
-        <button
-          onClick={() => logWater(8)}
-          disabled={logging}
-          className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
-        >
-          +8 oz
-        </button>
-        <button
-          onClick={() => logWater(16)}
-          disabled={logging}
-          className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
-        >
-          +16 oz
-        </button>
-        <input
-          type="number"
-          value={custom}
-          onChange={(e) => setCustom(e.target.value)}
-          placeholder="oz"
-          className="w-16 rounded-full bg-white/20 px-3 py-1 text-xs text-white placeholder:text-white/60 focus:outline-none"
-        />
-        <button
-          onClick={() => logWater(Number(custom))}
-          disabled={logging || !custom}
-          className="rounded-full bg-white px-3 py-1 text-xs font-medium text-blue-700 disabled:opacity-50"
-        >
-          Log
-        </button>
-      </div>
+      {readOnly ? (
+        <p className="mt-3 text-center text-xs text-white/70">
+          Water logging only applies to today.
+        </p>
+      ) : (
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            onClick={() => logWater(8)}
+            disabled={logging}
+            className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+          >
+            +8 oz
+          </button>
+          <button
+            onClick={() => logWater(16)}
+            disabled={logging}
+            className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+          >
+            +16 oz
+          </button>
+          <input
+            type="number"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            placeholder="oz"
+            className="w-16 rounded-full bg-white/20 px-3 py-1 text-xs text-white placeholder:text-white/60 focus:outline-none"
+          />
+          <button
+            onClick={() => logWater(Number(custom))}
+            disabled={logging || !custom}
+            className="rounded-full bg-white px-3 py-1 text-xs font-medium text-blue-700 disabled:opacity-50"
+          >
+            Log
+          </button>
+        </div>
+      )}
     </div>
   );
 }

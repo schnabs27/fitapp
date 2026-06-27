@@ -6,6 +6,9 @@ import { MEAL_TYPES, type Meal, type MealType } from "@/lib/types";
 
 type Props = {
   onReused: () => void;
+  // ISO timestamp to stamp the reused copy with — reusing a meal while
+  // viewing a future day plans it for that day, not today.
+  loggedAt: string;
 };
 
 const MEAL_TYPE_LABEL: Record<MealType, string> = {
@@ -15,7 +18,7 @@ const MEAL_TYPE_LABEL: Record<MealType, string> = {
   snack: "S",
 };
 
-export function MealHistorySearch({ onReused }: Props) {
+export function MealHistorySearch({ onReused, loggedAt }: Props) {
   const supabase = createClient();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Meal[]>([]);
@@ -51,6 +54,7 @@ export function MealHistorySearch({ onReused }: Props) {
       fat_g: meal.fat_g,
       sugar_g: meal.sugar_g,
       portion: meal.portion,
+      logged_at: loggedAt,
     });
     setAddingId(null);
     setQuery("");
